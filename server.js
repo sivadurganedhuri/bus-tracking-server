@@ -13,13 +13,28 @@ admin.initializeApp({
 
 app.post('/update-location', async (req, res) => {
   try {
-    const { deviceId, latitude, longitude, timestamp } = req.body;
-    if (!deviceId || !latitude || !longitude || !timestamp) return res.status(400).send('Missing fields');
+    let { deviceId, latitude, longitude, timestamp, secret } = req.body;
+    // Support query params for compatibility
+    if (!deviceId && req.query.id) {
+      deviceId = req.query.id;
+      latitude = parseFloat(req.query.lat);
+      longitude = parseFloat(req.query.lon);
+      timestamp = req.query.timestamp || new Date().toISOString();
+      secret = req.query.secret;
+    }
+    if (!deviceId || !latitude || !longitude || !timestamp) {
+      console.log('Missing fields:', { body: req.body, query: req.query });
+      return res.status(400).send('Missing fields');
+    }
+    // Verify secret (optional, enable after testing)
+    if (secret !== process.env.SECRET_KEY && req.query.secret !== process.env.SECRET_KEY) {
+      return res.status(403).send('Unauthorized');
+    }
     await admin.firestore().collection('bus_locations').doc(deviceId).set({
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       timestamp: new Date(timestamp).toISOString()
-    }, { merge: true });
+    }, { merge: false }); // Overwrite document
     res.status(200).send('Location updated');
   } catch (error) {
     console.error('Error:', error);
@@ -27,4 +42,4 @@ app.post('/update-location', async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => console.log('Server running'));
