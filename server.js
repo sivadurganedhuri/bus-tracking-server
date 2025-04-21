@@ -13,8 +13,14 @@ admin.initializeApp({
 
 app.post('/update-location', async (req, res) => {
   try {
-    const { deviceId, latitude, longitude, timestamp } = req.body;
-    if (!deviceId || !latitude || !longitude || !timestamp) return res.status(400).send('Missing fields');
+    const { deviceId, latitude, longitude, timestamp, secret } = req.body;
+    if (!deviceId || !latitude || !longitude || !timestamp) {
+      console.log('Missing fields:', req.body);
+      return res.status(400).send('Missing fields');
+    }
+    if (secret !== process.env.SECRET_KEY) {
+      return res.status(403).send('Unauthorized');
+    }
     await admin.firestore().collection('bus_locations').doc(deviceId).set({
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
@@ -27,4 +33,4 @@ app.post('/update-location', async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT || 3000);
+app.listen(process.env.PORT || 3000, () => console.log('Server running'));
